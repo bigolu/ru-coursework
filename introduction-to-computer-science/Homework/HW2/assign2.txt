@@ -1,0 +1,41 @@
+Name: Olaolu Emmanuel
+Assignment 2
+
+Problem 1 (Warmup)
+------------------
+Test Case 1
+Inputs:
+5,-3,2
+Expected Output:
+x^3 - 4x^2 - 11x + 30
+Actual Output:
+x^3 - 4x^2 - 11x + 30
+
+Test Case 2
+Inputs:
+0,0,0
+Expected Output:
+x^3
+Actual Output:
+x^3
+
+Problem 2 (Polynomial)
+----------------------
+Test Case 1
+Inputs:
+2,7
+Expected Output:
+9
+Actual Output:
+9
+
+Test Case 2
+Inputs: 
+-100,25
+Expected Output:
+-75
+Actual Ouput:
+-75
+
+
+

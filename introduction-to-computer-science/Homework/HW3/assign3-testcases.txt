@@ -1,0 +1,125 @@
+Name: Olaolu Emmanuel
+Assignment 3
+
+Problem 1 (Taxes)
+------------------
+Analysis:
+For this problem, I made a muliple formulas for calculating tax based on which interval
+the user's income lies in. The intervals are based on where the percentage of tax is
+changes.
+
+
+Test Case 1
+Input:
+9000
+Expected Output:
+950
+Actual Output:
+950
+
+Test Case 2
+Input:
+60000
+Expected Output:
+11200
+Actual Output:
+11200
+
+Test Case 3
+Input:
+100000
+Expected Output:
+23000
+Actual Output:
+23000
+
+Test Case 4
+Input:
+-1
+Expected Output:
+User entered bad input.
+Actual Output:
+User entered bad input.
+
+Problem 2 (TwoSmallest)
+----------------------
+Analysis:
+For this problem, my main concerns where ensuring that two values would be compared and
+put into the variables lowest and secondlowest accordingly because for the first
+two numbers, they cannot be compared to anything but themselves. To fix this,
+ I added a count to my for loop so that after ther first two numbers, it would
+compare the rest to the lowest and secondlowest values. Also, I made sure that
+when the lowest value is replaced, the its former value is stored in
+secondlowest.
+
+Test Case 1
+Inputs:
+-1,1,3,0,-5,-4,-5,-1
+Expected Output:
+-5
+-5
+Actual Output:
+-5
+-5
+
+
+Test Case 2
+Inputs:
+-1,1,3,6,0,1,-6,-1
+Expected Output:
+-6
+0
+Actual Output:
+-6
+0
+
+Test Case 3
+Inputs:
+-1,-1
+Expected Output:
+User entered bad input.
+(You must give at least two values to have a lowest and second lowest value)
+Actual Output:
+User entered bad input.
+(You must give at least two values to have a lowest and second lowest value)
+
+Test Case 3
+Inputs:
+-1,5,-1
+Expected Output:
+User entered bad input.
+(You must give at least two values to have a lowest and second lowest value)
+Actual Output:
+User entered bad input.
+(You must give at least two values to have a lowest and second lowest value)
+
+Problem 3 (NthPrime)
+----------------------
+Analysis: For this problem, I knew I would need a nested loop because the inner 
+loop would keep checking if there are factors other than one and itself and the 
+outer loop would generate the numbers that were being tested for being magical numbers.
+
+Test Case 1
+Input:
+0
+Expected Output:
+User entered bad input.
+Actual Output:
+User entered bad input.
+
+Test Case 2
+Input:
+11
+Expected Output:
+31
+Actual Output:
+31
+
+Test Case 3
+Input:
+1
+Expected Output:
+2
+Actual Output:
+2
+

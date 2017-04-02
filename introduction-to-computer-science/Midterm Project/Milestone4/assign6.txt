@@ -1,0 +1,111 @@
+Name: Olaolu Emmanuel
+Milestone 4
+
+Effeciency Analysis
+-------------------
+
+printTissue:
+------------
+
+Input Size - n (row/col of the tissue array)
+
+operation(s) - print
+
+best case - n^2 (# of rows * # of cols)
+
+worst case - n^2 (# of rows * # of cols)
+
+big O(n^2)
+
+assignCellTypes:
+----------------
+
+Input size - n (row/col of the tissue array)
+
+operation(s) - assign character to tissue array
+
+base case - n^2 (# of rows * # of cols)
+
+worst case - n^2 (# of rows * # of cols)
+
+big O(n^2)
+
+isSatisfied:
+------------
+
+Input Size - n (row/col of the tissue array)
+
+operation(s) - compare the values surrounding the cell to the cell
+
+best case - 6 (if the smallest array is inputted (2x2) then only two comparisons must be made per cell and one of the spaces must be a blank)
+
+worst case - 8((n*n) - ((4n-8) + 8)) + 5(4n-8) + 12 = 8n^2 - 32n - 32 (this accounts for corner cases, side cases, and regular cases)
+
+big O(n^2) 
+
+boardSatisfied:
+---------------
+
+input size - n (row/col of the tissue array)
+
+operation(s) - call isSatisfied (whose bigO is n^2)
+
+best case - n^2 (only calls isSatisfied once and it returns false)
+
+worst case - n^4 (calls isSatisfied n^2 times)
+
+big O(n^4)
+
+moveAllUnsatisfied:
+-------------------
+
+input size - n (row/col of the tissue array)
+
+operation(s) - call isSatisfied (n^2 times) and swap char values in tissue array
+
+best case - n^4(calling isSatisfied n^2 times) + 1(only one cell is unsatisfied)
+
+worst case - n^4 + (n^2-1)(all cells are unsatisfied and there is at least one space)
+
+big O(n^4) (I ingore lower order terms)
+
+endSimulation:
+--------------
+
+input size - n (row/col of the tissue array)
+
+operation(s) - incrementing int numMoved, call printTissue twice, and print statements
+
+best case - 3n^2 + 7
+
+worst case - 3n^2 + 7 (same as best case because the method always does the same thing)
+
+big O(n^2) 
+
+main:
+-----
+
+input size - n (row/col of the tissue array)
+
+operation(s) - call assignCellType, make copy of tissue array, call boardSatisfied, call endSimulation, call printTissue, call moveUnsatisfied
+
+best case - n^4 + 3n^2 (The board is satisfied as soon as its cell types are assigned)
+
+worst case - n^4 + 3n^2 + maxRounds*(n^4 + n^2)
+
+big O(maxRounds*n^4) (I did not disregard the coeffecient because it is not a constant)
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+

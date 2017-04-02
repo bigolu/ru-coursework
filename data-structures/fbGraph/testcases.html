@@ -1,0 +1,197 @@
+<html><head>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+
+<title>
+CS112 Fall 2014: Programming Assignment 5 - Friendship Graph Algorithms Test Cases
+</title>
+<style>
+body { font: 14px Trebuchet MS, Verdana, Arial, Helvetica, sans-serif; }
+div.code { background: lightgrey; width: 40%;}
+table { border-collapse: collapse; cellspacing: 0px; margin-left: 10%;}
+th { font: bold 14px Trebuchet MS; border-bottom: 1px solid black; padding: 10px; text-align:left;}
+td { padding: 2px; font: 13px Trebuchet MS; align:left; padding-right: 10px; }
+td.pts { text-align: right; padding-right: 20px; vertical-align: top;}
+tt { color: blue; font-size: 16px;}
+a, a:visited { color: blue; }
+pre { color: brown; }
+</style>
+</head><body><center>
+<h2>CS112 Fall 2014: Programming Assignment 5 - Friendship Graph Algorithms</h2>
+<h2>Test Cases</h2>
+<hr>
+</center>
+<ol>
+<li><tt>User interface: 4 pts</tt>
+<ul>
+<li>1 pts: Asking for graph input file, then 4 menu items including quit
+<li>2 pts: Asking for parameters for subgraph and shortest path
+<li>1 pt: Looping until user enters correct choice
+</ul>
+
+<p>
+<li><tt>Graph build: 6 pts</tt>
+<ul>
+<li>2 pts: Code parses input graph file correctly
+<li>4 pts: Code correctly loads graph into an adjacency
+linked lists data structure.<br>
+(The edge nodes in the adjacency linked list can either have numbers for
+neighbor vertices, or vertex object references. Using an ArrayList instead
+of a linked list to hold neighbors is ok, as is using an ArrayList instead
+of an array for the vertices. So for instance, an ArrayList of ArrayLists
+is permissible. Using a HashMap to hold Vertex objects directly,
+instead of having a separate HashMap for (names,numbers) and a separate structure
+for adjacency linked lists, is ok as well.)
+</ul>
+
+<p>
+<li><tt>Shortest path: 12 pts</tt>
+<p>Note: Output should be a correct sequence of names of people,
+either connected by lines (as shown in the outputs below), or comma
+separated. For example, for test case 2 below, output could alternatively be
+kaitlin,nick.
+<ul>
+<li>1 pts: test1 (output is no path), file <a href="sptest1.txt">sptest1.txt</a>
+<pre>
+      graph: 2 vertices, no connection
+<pre>
+               (aparna,penn state)  (kaitlin,rutgers)
+</pre>
+      input: kaitlin to aparna
+      output: no path
+</pre>
+<li>2 pts: test2 (1 edge), file <a href="subtest3.txt">subtest3.txt</a> 
+<pre>
+      graph: same as test3 of subgraph
+      input: kaitlin to nick
+      output: kaitlin--nick
+</pre>
+<li>2 pts: test3 (2 edges), file <a href="assnsample.txt">assnsample.txt</a> 
+<pre>
+      graph: same as in assignment
+      input: nick, aparna
+      output: nick--ricardo--aparna
+</pre>
+<li>2 pts: test4 (2 edges), file <a href="sptest4.txt">sptest4.txt</a>
+<pre>
+       graph: 100 vertices (p1..p100) in a chain,
+                plus edges between p1 and all other vertices except p50
+       input: p1 to p50
+       output: p1--p49--p50 OR p1--p51--p50
+</pre>
+<li>3 pts: test5 (9 edges), file <a href="subtest5.txt">subtest5.txt</a>
+<pre>
+       graph: same as test5 of subgraph
+       input: p1 to p10
+       output: p1--p2--p3--p4--p5--p6---p7---p8---p9---p10
+</pre>
+<li>2 pts: test6 (4 edges), file <a href="subtest5.txt">subtest5.txt</a>
+<pre>
+       graph: same as test5 of subgraph
+       input: p301 to p198
+       output: p301--p100--p99--p98--p198
+</pre>
+</ul>
+<p>
+<li><tt>Cliques: 8 pts</tt>
+<p>Note: Output should be one or more subgraphs, and each subgraph should be formatted
+just like the input file for the <tt>Graph build</tt> section of the assignment. 
+Outputs shown below are simplified 
+for easier reading, and not the actual format expected.<br>
+<p><b>Penalty</b>: 3 points taken off if your output is not in the expected format.
+2 points taken off if your output is in the expected format, but edges are repeated.
+For example, for the edge nick--kaitlin only nick|kaitlin OR kaitlin|nick should
+appear in the output, NOT both.
+
+<p>
+<ul>
+<li>1 pt: test1 (empty output), file <a href="subtest1_2.txt">subtest1_2.txt</a>
+<pre>
+       graph: same as test1 of subgraph
+       school: cornell
+       output: empty
+</pre>
+<li>1 pt: test1 (single vertex), file <a href="subtest1_2.txt">subtest1_2.txt</a>
+<pre>
+       graph: same as test1 of subgraph
+       school: rutgers
+       output: (kaitlin,rutgers)
+</pre>
+<li>2 pts: test3 (2 cliques, single vertices), file <a href="subtest3.txt">subtest3.txt</a> 
+<pre>
+       graph: same as test3 of subgraph
+       school: rutgers
+       output: clique1: (sara,rutgers) clique2: (kaitlin,rutgers)
+</pre>
+<li>2 pts: test4 (1 clique, entire graph), file <a href="clqtest4.txt">clqtest4.txt</a>
+<pre>
+       graph: 4 vertices in a cycle, all rutgers
+
+               (p1,rutgers)--(p2,rutgers)--(p3,rutgers)--(p4,rutgers)
+                  |                                        |
+                  ------------------------------------------
+
+       school: rutgers
+       output: entire input graph
+</pre>
+<li>1 pt: test5 (2 cliques, same as in assignment), file <a href="assnsample.txt">assnsample.txt</a>
+<pre>
+       graph: same as in assignment
+       school: rutgers
+       output: 2 cliques as shown in assignment
+</pre>
+<li>1 pt: test6 (2 cliques), file <a href="subtest5.txt">subtest5.txt</a>
+<pre>
+       graph: same as test5 of subgraph
+       school: rutgers
+       output: the 2 rutgers diamonds
+</pre>
+</ul>
+<p>
+<li><tt>Connectors: 20 pts</tt>
+<p>Note: Output should be names of all connectors, comma separated (or one per line),
+in any order.
+<p>
+<ul>
+<li>3 pts: test1 (no connectors), file <a href="subtest1_2.txt">subtest1_2.txt</a>
+<pre>
+       graph: same as test1 of subgraph
+       output: no connectors
+</pre>
+<li>3 pts: test2 (no connectors), file <a href="clqtest4.txt">clqtest4.txt</a>
+<pre>
+       graph: same as test4 of clique 
+       output: no connectors
+</pre>
+<li>3 pts: test3 (1 connector), file <a href="subtest3.txt">subtest3.txt</a>
+<pre>
+       graph: test3 of subgraph
+       output: nick
+</pre>
+<li>3 pts: test4 (1 connector), file <a href="subtest4.txt">subtest4.txt</a>
+<pre>
+       graph: test4 of subgraph
+       output: p1
+</pre>
+<li>4 pts: test5 (same as assignment), file <a href="assnsample.txt">assnsample.txt</a>
+<pre>
+       graph: assignment graph
+       output: jane, aparna, nick, tom, michele
+</pre>
+<li>4 pts: test6 (5 connectors), file <a href="conntest6.txt">conntest6.txt</a>
+<pre>
+       graph: like test5, except only with 5 diamonds
+
+                        p6      p7     p8     p9
+                      /    \  /    \ /    \ /    \  
+                    p1------p2------p3-----p4-----p5
+                      \    /  \    /  \   /  \   /         
+                        p10     p11    p12    p13         
+
+       output: p2,p3,p4
+</pre>
+</ul>
+</ol>
+</body>
+</html>
+
+    

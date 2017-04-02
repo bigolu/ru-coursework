@@ -1,0 +1,244 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        
+        <title>College Costs</title>
+
+        <link href="../static/css/scrolling-nav.css" rel="stylesheet">
+        <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+        <link href="../static/css/bootstrap.css" rel="stylesheet">
+
+        <link rel="icon" type="image/x-icon" href="../static/img/favicon.ico">
+        <link href='http://fonts.googleapis.com/css?family=Raleway|Montserrat:400,700' rel='stylesheet' type='text/css'>
+        <link href="../static/igniteui/css/structure/jquery.ui.all.css" rel="stylesheet" />
+        <link href="../static/igniteui/css/structure/infragistics.css" rel="stylesheet" />
+        <link href="../static/igniteui/css/themes/darkly/infragistics.theme.css" rel="stylesheet" />
+        <link href="http://cdn-na.infragistics.com/igniteui/latest/css/themes/infragistics/infragistics.theme.css" rel="stylesheet">
+        <link href="http://cdn-na.infragistics.com/igniteui/latest/css/structure/infragistics.css" rel="stylesheet">
+        
+    </head>
+
+    <body id="page-top" data-spy="scroll" data-target=".navbar-fixed-top">
+        
+        <nav class="navbar navbar-default navbar-fixed-top" role="navigation">
+            
+            <div class="container">
+                
+                <div class="navbar-header page-scroll">
+                    <button type="button" class="navbar-toggle" data-toggle="collapse" data-target=".navbar-ex1-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    </button>
+                    <a class="navbar-brand page-scroll" href="#page-top">collegecosts336</a>
+                </div>
+                <!-- Collect the nav links, forms, and other content for toggling -->
+                <div class="collapse navbar-collapse navbar-ex1-collapse">
+                    <ul class="nav navbar-nav">
+                        <!-- Hidden li included to remove active class from about link when scrolled up past about section -->
+                        <li class="hidden">
+                            <a class="page-scroll" href="#page-top"></a>
+                        </li>
+                        <li>
+                            <a class="page-scroll" href="#mapSection">Costs/Salaries</a>
+                        </li>
+                        <li>
+                            <a class="page-scroll" href="#expendSection">Expenditures</a>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+
+        </nav>
+
+        <div class="container-fluid">
+            <div class="col-md-12" style="margin-top:110px">
+                <div class="panel panel-info">
+                    <div class="panel-heading">Random Stats for the Lost:</div>
+                    <marquee id="stats-container" style="scrollamount:30"></marquee>
+                </div>
+            </div>
+        </div>
+
+        <div class="container">
+            <div class="jumbotron">
+                <h1>Looking for college costs the right way.</h1>
+                <p>biggie emmanuel : ishan patel : lawrence park.</p>
+            </div>
+        </div>
+        
+    <!-- STARTING MAP SECTION HERE: -->
+        <section id="mapSection">
+        <div class="container-fluid" style="margin-bottom:20px">
+        <div class="col-md-6">
+                <div class="panel panel-danger">
+                    <div class="panel-heading">Heatmap for College Costs:
+                    </div>
+                    <div class="panel-body">
+                        Choose the inputs to generate your own custom heatmap for your own college costs below.<br><br>
+                        <div class="col-md-3">
+                            <div class="dropdown">
+                                <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                    <select id="state0">
+                                        <option selected disabled>State</option>
+                                    </select>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="dropdown">
+                                <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                    <select id="campus0">
+                                        <option selected disabled>On/Off Campus?</option>
+                                        <option value="1">On Campus</option>
+                                        <option value="0">Off Campus</option>
+                                    </select>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="panel panel-danger">
+                <div class="panel-heading">Cost to Benefit Ratio Bar Graph:</div>
+            <div class="panel-body">
+                Then select a major and voila! You have a bar graph of the cost/benefit ratio of the 6 closest schools depending upon what point was chosen.
+                
+                <br><br>
+                
+                <div style="width:100%">
+                <div class="col-md-12">
+                <div class="dropdown">
+                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" style="width:100%">
+                        <select id="majors" style="width:100%">
+                            <option selected disabled>Select Major</option>
+                        </select>
+                    </button>
+                </div>
+                </div>
+                </div>
+            </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+        <script id="geoSymbolTooltip" type="text/x-jquery-tmpl">
+            <table id="tooltipTable">
+                <tr><th colspan="2">${item.name}</th></tr>
+                <tr>
+                    <td>Cost:</td>
+                    <td>${item.cost}</td>
+                </tr>
+            </table>
+        </script>
+        <div id="map"></div>
+        </div>
+
+        <div class="col-md-6">
+        <script id="tooltipTemplate" type="text/x-jquery-tmpl">
+            <div style="color: #44ACD6">
+                <span>School </span><span>${item.school}</span><br />
+                Total Cost: <span style="font-weight: bold">${item.cost}</span>
+                Salary: <span style="font-weight: bold">${item.salary}</span>
+                Ratio: <span style="font-weight: bold">${item.ratio}</span>
+            </div>
+        </div>
+
+        </script>
+        <div id="barchart1"></div>
+        </div>
+        </div>
+        </section>
+
+        <!-- 1st line of container fin here. -->
+        <!-- 2nd line of container starting: -->
+        <!-- (pie charts) -->
+        <section id="expendSection">
+            <div class="container-fluid">
+                <div class="col-md-6">
+                    <div class="panel panel-success">
+                        <div class="panel-heading">Cost Expenditures</div>
+                        <div class="panel-body">
+                            Choose the options below and see the breakdown b/w what your money goes into and where it is spent. 
+                            <br>
+                            <br>
+                            <div class="col-xs-6">
+                                <div class="dropdown">
+                                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                        <select id="state">
+                                            <option selected disabled>In or Out of State?</option>
+                                            <option value="1">In State</option>
+                                            <option value="0">Out of State</option>
+                                        </select>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-xs-6">
+                                <div class="dropdown">
+                                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true">
+                                        <select id="campus1">
+                                            <option selected disabled>On/Off Campus?</option>
+                                            <option value="0">Off Campus</option>
+                                            <option value="1">On Campus</option>
+                                        </select>
+                                    </button>
+                                </div>
+                            </div>
+                            <br><br>
+                            <div class="col-lg-12">
+                                <div class="dropdown">
+                                    <button class="btn btn-default dropdown-toggle" type="button" id="dropdownMenu1" data-toggle="dropdown" aria-haspopup="true" aria-expanded="true" style="width:100%">
+                                        <select id="schools" style="width:100%">
+                                            <option selected disabled>Select School</option>
+                                        </select>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div style="height:250px;">
+                        <div class="panel panel-info">
+                            <div class="panel-heading">More random facts for the lost!</div>
+                            <div id="rando2" class="panel-body"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="container-fluid">
+            <div class="row top-buffer">
+                <div class="col-lg-6">
+                    <div id="piechart1"></div>
+                </div>
+                <div class="col-lg-6">
+                    <div id="piechart2"></div>
+                </div>
+            </div>
+        </div>
+
+        <script src="../static/js/jquery.js"></script>
+        <script src="../static/js/bootstrap.min.js"></script>
+        <script src="../static/js/jquery.easing.min.js"></script>
+        <script src="../static/js/scrolling-nav.js"></script>
+        <script src="../static/js/jquery-1.10.2.min.js"></script>
+        <script src="../static/js/jquery-ui-1.11.2.min.js"></script>
+        <script src="../static/js/modernizr-2.8.3.js"></script>
+        <script src="../static/js/q.min.js"></script>
+        <script src="../static/igniteui/infragistics.core.js"></script>
+        <script src="../static/igniteui/infragistics.dv.js"></script>
+        <script src="../static/igniteui/infragistics.lob.js"></script>
+        <script src="../static/js/viewModel.js"></script>
+    </body>
+
+</html>

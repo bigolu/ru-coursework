@@ -1,0 +1,40 @@
+Name: Olaolu Emmanuel
+Assignment 4
+
+Problem 1 (Gradebook)
+------------------
+Analysis:
+For the computeGrade method, I made a for loop that would check each grade index for the particular student and if there was something
+other than -1, meaning they weren't excused, it would add 1 to a counter and calculate the grade for that test and it it to variable sum.
+If the counter equals 0 after the whole loop, I print "the student has been excused for all tests". If not, I divide the grades by the counter 
+and return that value.
+
+For the computeAllGrades method, I used my computeGrade method to get the grade for each student and I put those values into an array and
+returned that array.
+
+For the computeClassAverage method, I used a for loop to check for each student if they were excused form the exam. Of not, one would be
+aded to a counter and that score would be added to sum. After that, I return that sum divided by the counter.
+
+
+
+
+Problem 2 (Matrix)
+----------------------
+Analysis:
+For this problem, first I initialized the control variable i, j, k, and a. 
+
+i = row of matrix1 and product matrix. Also the equals the column of matrix2.
+j = column of matrix1 and row of matrix2.
+k = used so I know when I am finished multiplying one row by one column,
+a = column of product matrix.
+
+Then I made a for loop which would take the index at i,j
+in the first matrix and j,i in the second matrix and multiply. Doing so lets me move horizontally in one matrix and vertically in the other. Then
+I used varible k to control gettting the sum of one row multiplied by a column. I would put that sum in index i,a in the product matrix. I use
+i because the first matrix and the product matrix are always in the same row in my program. However, I used a for my product matrix so that after one iteration
+of getting the sum of a column multiplied by a row, I move only one space over in my product matrix.
+
+
+
+
+
