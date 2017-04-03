@@ -1,8 +1,8 @@
-BSIZE=512
-BCOUNT=100
+BSIZE=32
+BCOUNT=32
 INPUT="test_graphs/roadNet-CA.txt"
 OUTPUT="output.txt"
-METHOD="bmf"
+METHOD="tpe"
 USEMEM="no"
 SYNC="incore"
 
