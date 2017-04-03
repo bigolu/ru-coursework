@@ -8,6 +8,7 @@
 #include "utils.h"
 #include "cuda_error_check.cuh"
 #include "graph.h"
+#include <limits.h>
 
 #include "opt.cu"
 #include "impl2.cu"
@@ -25,6 +26,44 @@ void openFileToAccess( T_file& input_file, std::string file_name ) {
 	input_file.open( file_name.c_str() );
 	if( !input_file )
 		throw std::runtime_error( "Failed to open specified file: " + file_name + "\n" );
+}
+
+void verify(edge *edges, int numE){
+    puts("start sequential BMF\n");
+    int numV = 1971281;
+    int *d = (int*)malloc(sizeof(int) * numV);
+    for(int i = 0; i < numV; i++) {
+        d[i] = INT_MAX;
+    }
+    d[0] = 0;
+    int changed = 0;
+    do{
+        changed = 0;
+        for(int i = 0; i < numE; i++){
+            int u = edges[i].src;
+            int v = edges[i].dest;
+            int w = edges[i].weight;
+            if(d[u] == INT_MAX){
+                continue;
+            }
+            if ((d[u] + w) < d[v]){
+                d[v] = d[u]+w;
+                changed = 1;
+            }
+        }
+    }while(changed);
+   
+    puts("verifying answer\n");
+    FILE *fp = fopen("output.txt", "r");
+    int vNum = 0;
+    int val = 0;
+    while(EOF != fscanf(fp, "%d:\t%d", &vNum, &val)){
+        if(val != d[vNum]){
+        printf("node: %d, yours: %d, ours: %d\n",
+            vNum, val, d[vNum]);
+
+        }
+    }
 }
 
 
@@ -48,12 +87,14 @@ int main( int argc, char** argv )
 		std::ofstream outputFile;
 		int selectedDevice = 0;
 		int bsize = 0, bcount = 0;
-		int vwsize = 32;
-		int threads = 1;
+		//int vwsize = 32;
+		//int threads = 1;
 		long long arbparam = 0;
 		bool nonDirectedGraph = false;		// By default, the graph is directed.
 		ProcessingType processingMethod = ProcessingType::Unknown;
 		syncMethod = OutOfCore;
+        // passing this to kernel instead for incore/outcore
+        int outcore = 1;
 
 
 		/********************************
@@ -70,19 +111,21 @@ int main( int argc, char** argv )
 				    processingMethod = ProcessingType::Own;
 				else{
            std::cerr << "\n Un-recognized method parameter value \n\n";
-           exit;
+           //exit;
          }   
 			}
 			else if ( !strcmp(argv[iii], "--sync") && iii != argc-1 ) {
-				if ( !strcmp(argv[iii+1], "incore") )
-				        syncMethod = InCore;
-				if ( !strcmp(argv[iii+1], "outcore") )
-    				        syncMethod = OutOfCore;
+                if ( !strcmp(argv[iii+1], "incore") ){
+			        syncMethod = InCore;
+                    outcore = 0;
+                }
+                else if ( !strcmp(argv[iii+1], "outcore") ){
+    			    syncMethod = OutOfCore;
+                }
 				else{
-           std::cerr << "\n Un-recognized sync parameter value \n\n";
-           exit;
-         }  
-
+                    std::cerr << "\n Un-recognized sync parameter value \n\n";
+                    //exit;
+                }  
 			}
 			else if ( !strcmp(argv[iii], "--usesmem") && iii != argc-1 ) {
 				if ( !strcmp(argv[iii+1], "yes") )
@@ -91,7 +134,7 @@ int main( int argc, char** argv )
     				        smemMethod = UseNoSmem;
         else{
            std::cerr << "\n Un-recognized usesmem parameter value \n\n";
-           exit;
+           //exit;
          }  
 			}
 			else if( !strcmp( argv[iii], "--input" ) && iii != argc-1 /*is not the last one*/)
@@ -105,7 +148,7 @@ int main( int argc, char** argv )
 
 		if(bsize <= 0 || bcount <= 0){
 			std::cerr << "Usage: " << usage;
-      exit;
+      //exit;
 			throw std::runtime_error("\nAn initialization error happened.\nExiting.");
 		}
 		if( !inputFile.is_open() || processingMethod == ProcessingType::Unknown ) {
@@ -139,7 +182,8 @@ int main( int argc, char** argv )
 
 		switch(processingMethod){
 		case ProcessingType::Push:
-		    puller(&parsedGraph, bsize, bcount);
+		    puller(&parsedGraph, bsize, bcount, outcore);
+            verify(parsedGraph.data(), parsedGraph.size());
 		    break;
 		case ProcessingType::Neighbor:
 		    neighborHandler(&parsedGraph, bsize, bcount);

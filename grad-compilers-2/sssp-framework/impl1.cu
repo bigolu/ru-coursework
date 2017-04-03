@@ -6,16 +6,24 @@
 #include "cuda_error_check.cuh"
 #include "parse_graph.hpp"
 #include "graph.h"
+#include "limits.h"
 
-__global__ void pulling_kernel(std::vector<edge> * edges, std::vector<int>
-    distances, int * hasChanged){
-
-    //update me based on my neighbors. Toggle anyChange as needed.
-    //offset will tell you who I am.
-}
-
+/****** START UTIL METHODS ******/
 bool edgeSrcComparator(edge a, edge b){ return (a.src < b.src); }
 bool edgeDestComparator(edge a, edge b){ return (a.dest < b.dest); }
+
+void swap(void **a, void **b){
+    void *tmp = *a;
+    *a = *b;
+    *b = tmp;
+}
+
+int readCudaInt(int *i){
+    int tmp;
+    cudaMemcpy(&tmp, i, sizeof(int), cudaMemcpyDeviceToHost);
+    
+    return tmp;
+}
 
 void printEdges(std::vector<edge> edges){
     for(edge e : edges){
@@ -26,30 +34,116 @@ void printEdges(std::vector<edge> edges){
 int getNumVertices(std::vector<edge> edges){
     int max = -1;
     for(edge e : edges){
-        max = std::max(max, std::max(e.src, e.dest));
+        int tmp = std::max(e.src, e.dest);
+        max = std::max(max, tmp);
     }
 
     return max + 1;
 }
 
-void puller(std::vector<edge> *edgesPtr, int blockSize, int blockNum){
+void writeAnswer(int *output, int len){
+    FILE *fp = fopen("output.txt", "w");
+    for(int i = 0; i < len; i++){
+        fprintf(fp, "%d:\t%d\n", i, output[i]);
+    }
+    fclose(fp);
+}
+/****** END UTIL METHODS ******/
+
+int INF = INT_MAX;
+int ZERO = 0;
+
+__global__ void outcoreKernel(edge *edges, int *len, int *distPrev, int *distCur, int *hasUpdated){
+    if(threadIdx.x == 0 && blockIdx.x == 0){
+        *hasUpdated = 0;
+    }
+    __syncthreads();
+
+    int load = (*len % gridDim.x == 0) ? *len / gridDim.x : *len / gridDim.x + 1;
+    int beg = load * blockIdx.x;
+    int end = (int)fminf((float)*len, (float)beg + (float)load);
+    beg = beg + threadIdx.x;
+    for(int i = beg; i < end; i += blockDim.x){
+        int src = edges[i].src;
+        int dest = edges[i].dest;
+        int weight = edges[i].weight;
+        if(distPrev[src] == INT_MAX) continue;
+        if(distPrev[src] + weight < distPrev[dest]){
+            atomicMin(&distCur[dest], distPrev[src] + weight);
+            *hasUpdated = 1;
+        }
+        else if(distPrev[src] + weight == distPrev[dest]){
+            atomicMin(&distCur[dest], distPrev[src] + weight);
+        }
+    }
+}
+
+void outcoreHost(std::vector<edge> edges, int blockSize, int blockNum){
+    int numVertices = getNumVertices(edges);
+    int numEdges = edges.size();
+    int distanceVectorSize = sizeof(int) * numVertices;
+
+    // init device args
+    edge *edgesDev; int *len; int *distCur; int *distPrev; int *hasUpdated;
+    cudaMalloc((void**)&edgesDev, numEdges * sizeof(edge));
+    cudaMalloc((void**)&len, sizeof(int));
+    cudaMalloc((void**)&distCur, distanceVectorSize);
+    cudaMalloc((void**)&distPrev, distanceVectorSize);
+    cudaMalloc((void**)&hasUpdated, sizeof(int));
+
+    cudaMemcpy(edgesDev, edges.data(), edges.size()*sizeof(edge), cudaMemcpyHostToDevice);
+    cudaMemcpy(len, &numEdges, sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy((void*)hasUpdated, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
+
+    cudaMemset((void*)distCur, 0, distanceVectorSize);
+    cudaMemcpy((void*)distCur, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
+    for(int i = 1; i < numVertices; i++){
+        cudaMemcpy((void*)&distCur[i], &INF, sizeof(int), cudaMemcpyHostToDevice);
+    }
+
+    cudaMemset((void*)distPrev, 0, distanceVectorSize);
+    cudaMemcpy((void*)distPrev, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
+    for(int i = 1; i < numVertices; i++){
+        cudaMemcpy((void*)&distPrev[i], &INF, sizeof(int), cudaMemcpyHostToDevice);
+    }
+
+    // launch device kernel
+    while(true){
+        outcoreKernel<<<blockNum, blockSize>>>(edgesDev, len, distPrev, distCur, hasUpdated);
+        if(!readCudaInt(hasUpdated)) break;
+        swap((void**)&distCur, (void**)&distPrev);
+    }
+    
+    // copy output from device
+    int *output = (int*) malloc(distanceVectorSize);
+    cudaMemcpy((void*)output, distCur, distanceVectorSize, cudaMemcpyDeviceToHost);
+
+    writeAnswer(output, numVertices);
+}
+
+void incoreHost(std::vector<edge> edges, int blockSize, int blockNum){
+    puts("HEYA!");
+}
+
+void puller(std::vector<edge> *edgesPtr, int blockSize, int blockNum, int outcore){
     setTime();
 
-    /*
-     * Do all the things here!
-     **/
     std::vector<edge> edges = *edgesPtr;
     std::sort(edges.begin(), edges.end(), edgeSrcComparator);
-
+    outcore ? outcoreHost(edges, blockSize, blockNum) : incoreHost(edges, blockSize, blockNum);
+    
     cudaDeviceProp props; cudaGetDeviceProperties(&props, 0);
-    int numVertices = getNumVertices(edges);
-    int vertexVectorSize = Sizeof(int) * numVertices;
-    int *output = (int*) malloc(vertexVectorSize);
-    int *distCur; int *distPrev; bool *hasUpdated;
-    cudaMalloc((void**)&distCur, vertexVectorSize);
-    cudaMalloc((void**)&distPrev, vertexVectorSize);
-    cudaMalloc((void**)&hasUpdated, vertexVectorSize);
-
-
-    printf("The total computation kernel time on GPU %s is %f milli-seconds", props.name, getTime());
+    printf("The total computation kernel time on GPU %s is %f milli-seconds\n", props.name, getTime());
 }
+        /*int *tmp = (int*)malloc(vertexVectorSize); 
+        int *tmc = (int*)malloc(vertexVectorSize);
+        cudaMemcpy((void*)tmp, distPrev, vertexVectorSize, cudaMemcpyDeviceToHost);
+        cudaMemcpy((void*)tmc, distCur, vertexVectorSize, cudaMemcpyDeviceToHost);
+            
+        for(int i = 0; i < numVertices; i++){
+            printf("%d, ", tmp[i]);
+        }
+        printf("%s", "\n\n");
+        for(int i = 0; i < numVertices; i++){
+            printf("%d, ", tmc[i]);
+        }*/

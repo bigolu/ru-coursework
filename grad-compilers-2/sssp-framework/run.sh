@@ -1,1 +1,11 @@
-./sssp --input test_graphs/sample_graph.txt --bsize 512 --bcount 4 --output output.txt --method bmf --usemem no --sync incore
+BSIZE=512
+BCOUNT=100
+INPUT="test_graphs/roadNet-CA.txt"
+OUTPUT="output.txt"
+METHOD="bmf"
+USEMEM="no"
+SYNC="outcore"
+
+ARGS="--input $INPUT --bsize $BSIZE --bcount $BCOUNT --output $OUTPUT --method $METHOD --usemem $USEMEM --sync $SYNC"
+
+./sssp $ARGS
