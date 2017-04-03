@@ -8,7 +8,7 @@
 #include "utils.h"
 #include "cuda_error_check.cuh"
 #include "graph.h"
-#include <limits.h>
+#include "limits.h"
 
 #include "opt.cu"
 #include "impl2.cu"
@@ -58,11 +58,8 @@ void verify(edge *edges, int numE){
     int vNum = 0;
     int val = 0;
     while(EOF != fscanf(fp, "%d:\t%d", &vNum, &val)){
-        if(val != d[vNum]){
-        printf("node: %d, yours: %d, ours: %d\n",
-            vNum, val, d[vNum]);
-
-        }
+        if(val != d[vNum])
+            printf("node: %d, yours: %d, ours: %d\n", vNum, val, d[vNum]);
     }
 }
 
