@@ -1,0 +1,179 @@
+Name: Olaolu Emmanuel
+Midtem Project: Milestone 1
+
+Part a
+-------
+
+Inputs: for (i=0;i<n;i++)
+		for (j=0;j<n;j++)		
+			// do something
+
+This will cover all spaces in an nxn grid as my input will be all spaces on the grid.
+i is the row number and j is the column number
+
+
+Output: boolean satisfied, boolean unsatisified, null
+
+My output it whether that space is satisified, unsatified, or null (in the case of my program, null means empty).
+
+Algorithm:
+
+I plan to make a method named checkSatisfaction which will have the parameters of two ints (i,j). The method will take the two ints and check 
+[i-1,j], [i+1,j], [i,j-1], [i-1,j-1], [i+1,j-1], [i,j+1], [i-1,j+1], [i+1,j+1] of the 2d String array tissue. (this is the array which will hold all
+the x and o cells. I will declare the array as global so that the method will be able to refer to it). First it will declare the following variables:
+
+double same = 0; // represents amount of surrounding cells that are the same
+double total = 0; // represents total amount of surrounding cells
+String type = tissue[i][j]; // represents whether there is an x, o, or null in that place 
+boolean satisfied = true; // It will return this if satisfied
+boolean unsatisfied = false; It will return this if unsatisfied
+
+Then I will have an if statement saying if type = null then 
+return (null);
+
+If not, then do the following(if it isnt null then there is an x or an o):
+
+In the case of edge spaces where tissue[i-1][j] would be out of bounds, I will have a series of if statements to prevent checking thoses spaces:
+
+if (i==0 && j==0)
+ then only check spaces that dont have [i-1] or [j-1]
+
+if (i==0 && j==(n-1)) // i use n because its an nxn grid
+ then only check spaces that dont have [i-1] or [j+1]
+
+etc........
+
+Essentially, I am going to hardcode all of the coordinates that are on the edge of the grid into this method so that it wont check places
+that are out of bounds.
+
+Once, I've determined which spaces can be checked, the check will follow this general format:
+
+if (tissue[m][n].equals(type)) then:
+
+same += 1; // add 1 to amount of surrounding cells that are the same
+total += 1; // add 1 to total surrounding cells
+
+elseif (the place I am checking doesnt equal null) then:
+
+total += 1; // if there isnt a cell of the same type or null than it is a different type so I add 1 to the total
+
+I will do this for each place I am checking and once I am done I will see if same/total >= threshold (threshold will be the decimal form of the minimum
+threshold and I will make threshold a global variable as well so that the method can use it)
+
+if it is then:
+return (satisfied);
+
+else:
+return (unsatisfied);
+
+
+
+Part b
+-------
+
+To determine if the entire tissue sample has been stabilized, I would do the following:
+
+First, before I begin determining if the cells are satisfied, I will create the String array temp with same dimensions ([n][n]) as the tissue array
+and using this structure I will create a copy of the tissue array.:
+
+for (i=0;i<n;i++)
+		for (j=0;j<n;j++)		
+			temp[i][j] = tissue[i][j]
+
+This way, at the end of the round I will use a similar loop except this time it will compare the values in each space
+
+for (i=0;i<n;i++)
+		for (j=0;j<n;j++)		
+			if (temp[i][j].equals(tissue[i][j]))
+				numSameCells += 1
+
+At the end of the loop if numSameCells == 25 then the program will print "Satisifaction has been reached" and end the program. The reason why I do this is
+because if all the spaces in the array after the round are the same as before then that means nothing moved which means nothing was unsatisfied 
+meaning that the tissue is completely satisfied.
+
+
+Part c
+-------
+
+Input: array[i][j]
+
+Output: none // There is no output because I am moving the input as opposed to performing something on it
+
+To move an unsatisfied cell to a vacant spot I will use the following nested for loops:
+
+for (i=0;i<n;i++)
+	for (j=0;j<n;j++)		
+		if (array[i][j].equals("DX")
+			for (x=0;x<n;y++)
+				for (y=0;y<n;y++)
+					if (array[x][y] == "null")
+						array[x][y] = "X"
+						array[i][j] = "null"
+		elseif (array[i][j].equals("DO")
+			for (x=0;x<n;y++)
+				for (y=0;y<n;y++)
+					if (array[x][y] == "null")
+						array[x][y] = "O"
+						array[i][j] = "null"
+
+Explanation: The two outermost for loops check each cell in the grid for DX or DO which represent dissatifed X and dissatisfied O respectively.
+(In my code, once a cell is determined to be unsatisfied I will assign that spot in the array to DO or DX so that this way I know which ones
+to move)
+If there is a DX there are two nested for loops that check each space in the array for a null value because if there is null then that means it is empty
+Once it finds one, It will assign that spot to X and assign the spot with the DX to null. This same thing will be done if a DO is found except it replaces
+the null with O.
+
+
+Part d
+-------
+
+Other operations for assignment:
+
+1. I will need IO.readString() to read in whether there is an x or o or nothing in a space to form the tissue array
+
+2. If I am to randomly assign x's and o's to cells then I need a random number generator that assigns variable random to either 1, 2, or 3.
+If random==1 then I will assign an x, if random==2 it will assign an o, and if random==3, it will assign null.
+
+3. I will need a for loop that initializes the int rounds and assigns it to 0. at the end of each iteration, it will add 1 symbolizing the end
+of a round. This is necessary because my plan to determine if a grid will go on infinetely is as follows:
+	- supppose there is only one x and one o in the grid. the possible number of different positions in an nxn grid is (n*n)*((n*n)-1)
+	for example lets say it is a 5x5 grid. there will be 25*24 possible unique positions. the general equation for unique positions is:
+					uniquePositions = (n*n)!-((n*n)-x)! // n is the dimension, x is the number of x and o cells in the grid
+// and ! means factorial
+	At the end of each round, I will check if rounds == uniquePositions. If its true then it will print "impossible to achieve total satisfaction"
+	and end the program.
+
+4. I will also have an if statement that checks if the grid has any null, or empty, spaces. if not the program will print "needs at least on empty space"
+and end the program.
+
+5. I will also check if all the spaces are null and if that is true then I will print "there are no cells in the tissue" and end the program.
+
+6. Finallly, to make the code easier to read and less complicated for me to look at, I will create methods to perform tasks as opposed to doing
+it all in the main routine because that could get messy. Examples of this include a method to check if a cell is satisified
+
+Part e
+-------
+
+The number of rounds my program runs is dependent on the input of the user or what cells are randomly generated into the grid.
+			
+If there are no cells the program will not run because I will check for that in the beginning.
+
+If there are no vacant spaces the program wont run because I'll check for that too.
+
+If there is no way to achieve total satisfaction my program would run forever, but as stated in #3 in part d, I devised a way to
+tell if the program will run forever and I will stop it and tell the user that it would have ran forever.
+
+I predict that the more empty spaces on the initial grid the less rounds the program will run because there will be more space to
+find satisfaction for all the cells.
+
+
+					
+
+
+
+
+
+
+
+
+

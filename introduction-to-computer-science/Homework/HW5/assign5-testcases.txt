@@ -1,0 +1,107 @@
+Name: Olaolu Emmanuel
+Assignment 5
+
+
+Problem 1 (Pig Latin)
+----------------------
+Analysis: For this problem, I chose to check if the first letter is a vowel because that
+would be less checks than checking if it is a consonant. I used a method to do so. In my main method
+I had an if statement saying that id the first letter is a vowel then concatenate "way" to the end of the string. Else, I set the word equal to a substring of itself that did not contain the first letter
+and concatenated the first letter of the original word + "ay" to the end of the said substring.
+Then I return the string. If the string was empty, then I returned the empty string.
+
+Test Case 1
+Input:
+""
+Expected Output:
+""
+Actual Output:
+""
+
+Test Case 2
+Input:
+f
+Expected Output:
+fay
+Actual Output:
+fay
+
+Test Case 3
+Input:
+equal
+Expected Output:
+equalway
+Actual Output:
+equalway
+
+Problem 2 (WordCount)
+----------------------
+Analysis: First I created a method which uses a for loop to go through each index of a string. If the char
+had an intger value between that of a and z or between A and Z, I added one to my letter count. (I used
+the ASCII table to find the range integer values for letters) After that, I checked if the letter count
+was greater than or equal to the minimun specified by the user. If so it would return the boolean true.
+	My next problem was dividing the input string into seperate strings that contained no spaces. To do
+so, I had a while loop which would run as long as the length of the string is greater than 2. I did so
+because I added a space to the beggining and end of the input string so that every word would be in between
+two spaces no matter what. This way, if the length is 2, then therer cant be a word in between it. In the
+while loop I have two for loops. The first check for a nonspace char. That index is set to variable start. The other loop looks for a space, but this loop starts from wherever start is. This way I can find where a 
+word starts and ends. After this, I send the substring from start to end to my method and set the input
+string to a substring of itself from variable end to the end. In the event of being left with all spaces, the beggining of my while loop has a nested infinte while loop which the program will break out of if
+the for loop inside the nested infinte while loop finds a nonspace char. If the for loop does not, then that means the string is all spaces so I break from my outer while loop and output word count.
+
+Test Case 1
+Input:
+""
+0
+Expected Output:
+0
+Actual Output:
+0
+
+Test Case 2
+Input:
+a test sente89nce for...   my program  ---
+4
+Expected Output:
+3
+Actual Output:
+3
+
+Test Case 3
+Input:
+-------
+0
+Expected Output:
+1
+Actual Output:
+1
+
+Problem 3 (Compress)
+----------------------
+Analysis: For this one, I had set char spot equal to the character at the first index of the input. I also have a variable compressesString set to an empty string. Then I initialized int same to 1. Then I had a for loop which starts from i which is equal to index 1 of the string up until the last index. If the char at i = char at spot then I add one to same. If not I check if same is > 1. If so I add same + spot to my empty string. If not, I only add spot. If the string has a length less than or equal to 1 then I just return that string because it cannot possibly have duplicates.
+
+Test Case 1
+Input:
+ggggg...orprporoEEEEeeeFF/v,vlvVVVVV
+Expected Output:
+5g3.orprporo4E3e2F/v,vlv5V
+Actual Output:
+"5g3.orprporo4E3e2F/v,vlv5V"
+
+Test Case 2
+Input:
+""
+Expected Output:
+""
+Actual Output:
+""
+
+Test Case 3
+Input:
+r
+Expected Output:
+r
+Actual Output:
+r
+
+

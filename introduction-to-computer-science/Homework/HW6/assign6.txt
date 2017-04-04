@@ -1,0 +1,87 @@
+Name: Olaolu Emmanuel
+Assignment 6
+
+
+Problem 1a (Selection Sort)
+---------------------------
+
+Initial: M U E J R Q X B (0 comparisons)
+
+Pass1:   B U E J R Q X M (7 comparisons)
+Pass2:   B E U J R Q X M (6 comparisons)
+Pass3:   B E J U R Q X M (5 comparisons)
+Pass4:   B E J M R Q X U (4 comparisons)
+Pass5:   B E J M Q R X U (3 comparisons)
+Pass6:   B E J M Q R X U (2 comparisons)
+
+Final:   B E J M Q R U X (1 comparison)
+Total Comparisons: 28
+
+Problem 1b (Insertion Sort)
+---------------------------
+
+Initial: M U E J R Q X B (0 comparisons)
+
+Pass1:   M U E J R Q X B (1 comparison)
+Pass2:   E M U J R Q X B (2 comparisons)
+Pass3:   E J M U R Q X B (3 comparisons)
+Pass4:   E J M R U Q X B (2 comparisons)
+Pass5:   E J M Q R U X B (3 comparisons)
+Pass6:   E J M Q R U X B (1 comparison)
+
+Final:   B E J M Q R U X (7 comparisons)
+Total Comparisons: 19
+
+
+Problem 2a (search for same element in two arrays)
+-------------------------------
+
+1. Algorithm - Take the each element of array1 and check each element of array2 to see if they are equal.
+
+2. Factors - size of array (n)
+
+3. Operations - Comparison of two elements.
+
+4. # of Operations performed - Comparison (n^2)
+
+5. Effeciency:
+	Best Case - if the first element of each array is the same then the effeciency is 1.
+	Worst Case - if no elements are the same in either array then the effeciency is n^2.
+
+6. big-O notation - O(n^2).
+
+Problem 2b (count duplicate characters in a string)
+---------------------------------------------------
+
+1. Algorithm - First I will convert the string to a character array using toCharArray. Then sort the array using selection sort and then Check each index for against all indices after it to see if there is a match. If so, the check will begin from the next different character. For example, if you input string "aaaaabbbb", after checking for multiple a's it will start from the index of the first
+character which is not an a. In this case that is a b.
+
+2. Factors - size of string (n).
+
+3. Operations - Create character array. Sort the array. Comparison of elements.
+
+4. # of Operations performed - Create character array (1). Sort the array (n^2). Comparison (n).
+
+5. Effeciency:
+	There is no best or worst case because the amount of comparisons cannot raise or lower depending on the input. Both amount to n^2 + n + 1.
+
+6. big-O notation - O(n^2).
+
+Problem 2c (find empty row)
+---------------------------
+
+
+1. Algorithm - Check each row to see if all columns in that row are equal to 0.
+
+2. Factors - number of rows (r). number of columns (c).
+
+3. Operations - Comparison of indices to 0.
+
+4. # of Operations performed - Comparisons (r*c)
+
+5. Effeciency:
+	Best Case - If the first row contains all 0's then the effeciency is (c).
+	Worst Case - If there are no empty rows, then the effeciency is (r*c).
+
+6. big-O notation - O(r*c).
+

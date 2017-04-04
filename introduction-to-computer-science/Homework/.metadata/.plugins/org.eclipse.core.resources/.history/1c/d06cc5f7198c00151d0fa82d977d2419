@@ -1,0 +1,39 @@
+
+public class Test{
+	
+	public static class Array{
+        int[] value;
+        public Array(int[] array){
+            this.value = array;
+        }
+
+        /*public String toString(){
+            String list = "";
+            for(int i : this.value){
+                list += "[" + i + "] "; 
+            }
+            return list;
+        }*/
+		//public int[] value = new int[6];
+	}
+
+
+    public static void swap(Array a, int index1, int index2){
+        int temp = a.value[index1];
+        a.value[index1] = a.value[index2];
+        a.value[index2] = temp;
+    }
+
+    public static void main(String[] args){
+        System.out.println("hi");
+        int[] hi = {1,2,3,4,5};
+        Array numbers = new Array(hi);
+        System.out.println("Before: " + numbers);
+        
+        swap(numbers, 0, 1);
+        System.out.println("After: " + numbers);
+    }
+
+    
+
+}
