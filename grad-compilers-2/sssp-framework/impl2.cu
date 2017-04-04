@@ -53,7 +53,7 @@ void writeAnswer(int *output, int len){
 int INF = INT_MAX;
 int ZERO = 0;
 
-__global__ void outcoreKernel2(edge *edges, int *len, int *distPrev, int *distCur, int *hasUpdated, int *process){
+__global__ void outcoreKernel2(edge *edges, int *len, int *distPrev, int *distCur, int *hasUpdated){
     if(threadIdx.x == 0 && blockIdx.x == 0){
         *hasUpdated = 0;
     }
@@ -64,10 +64,6 @@ __global__ void outcoreKernel2(edge *edges, int *len, int *distPrev, int *distCu
     int end = (int)fminf((float)*len, (float)beg + (float)load);
     beg = beg + threadIdx.x;
     for(int i = beg; i < end; i += blockDim.x){
-        if(process[i] == 0){
-            continue;
-        }
-
         int src = edges[i].src;
         int dest = edges[i].dest;
         int weight = edges[i].weight;
@@ -79,17 +75,6 @@ __global__ void outcoreKernel2(edge *edges, int *len, int *distPrev, int *distCu
         else if(distPrev[src] + weight == distPrev[dest]){
             atomicMin(&distCur[dest], distPrev[src] + weight);
         }
-    }
-}
-
-__global__ void filterEdges(edge *edges, int *len, int *process, int *distPrev, int *distCur){
-    int load = (*len % gridDim.x == 0) ? *len / gridDim.x : *len / gridDim.x + 1;
-    int beg = load * blockIdx.x;
-    int end = (int)fminf((float)*len, (float)beg + (float)load);
-    beg = beg + threadIdx.x;
-    for(int i = beg; i < end; i += blockDim.x){
-        int srcIndex = edges[i].src;
-        process[i] = (distPrev[0] != distCur[srcIndex]) || (distPrev[srcIndex] == INT_MAX);
     }
 }
 
@@ -123,16 +108,9 @@ void neighborHandlerHost(std::vector<edge> edges, int blockSize, int blockNum){
         cudaMemcpy((void*)&distPrev[i], &INF, sizeof(int), cudaMemcpyHostToDevice);
     }
 
-    cudaMemset((void*)process, 0, numEdges * sizeof(int));
-    int one = 1;
-    for(int i = 0; i < numEdges; i++){
-        cudaMemcpy((void*)&process[i], &one, sizeof(int), cudaMemcpyHostToDevice);
-    }
-
     // launch kernels
     while(true){
-        outcoreKernel2<<<blockNum, blockSize>>>(edgesDev, len, distPrev, distCur, hasUpdated, process);
-        filterEdges<<<blockNum, blockSize>>>(edgesDev, len, process, distPrev, distCur);
+        outcoreKernel2<<<blockNum, blockSize>>>(edgesDev, len, distPrev, distCur, hasUpdated);
         if(!readCudaInt(hasUpdated)) break;
         swap((void**)&distCur, (void**)&distPrev);
     }
