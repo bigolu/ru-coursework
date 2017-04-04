@@ -144,15 +144,3 @@ void puller(std::vector<edge> *edgesPtr, int blockSize, int blockNum, int outcor
     cudaDeviceProp props; cudaGetDeviceProperties(&props, 0);
     printf("The total computation kernel time on GPU %s is %f milli-seconds\n", props.name, getTime());
 }
-        /*int *tmp = (int*)malloc(vertexVectorSize); 
-        int *tmc = (int*)malloc(vertexVectorSize);
-        cudaMemcpy((void*)tmp, distPrev, vertexVectorSize, cudaMemcpyDeviceToHost);
-        cudaMemcpy((void*)tmc, distCur, vertexVectorSize, cudaMemcpyDeviceToHost);
-            
-        for(int i = 0; i < numVertices; i++){
-            printf("%d, ", tmp[i]);
-        }
-        printf("%s", "\n\n");
-        for(int i = 0; i < numVertices; i++){
-            printf("%d, ", tmc[i]);
-        }*/

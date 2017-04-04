@@ -1,10 +1,10 @@
-BSIZE=32
-BCOUNT=52
+BSIZE=256
+BCOUNT=8
 INPUT="test_graphs/roadNet-CA.txt"
 OUTPUT="output.txt"
-METHOD="tpe"
+METHOD="bmf"
 USEMEM="no"
-SYNC="outcore"
+SYNC="incore"
 
 ARGS="--input $INPUT --bsize $BSIZE --bcount $BCOUNT --output $OUTPUT --method $METHOD --usemem $USEMEM --sync $SYNC"
 
