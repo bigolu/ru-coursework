@@ -1,2 +1,2 @@
 # ru-coursework
-All my coursework from Rutgers University
+All my computer science coursework from Rutgers University.
