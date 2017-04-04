@@ -1,0 +1,4 @@
+DEBUG = True or False
+SQLALCHEMY_DATABASE_URI = ''
+SQLALCHEMY_TRACK_MODIFICATIONS = True or False
+host=''
