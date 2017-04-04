@@ -1,0 +1,21 @@
+
+public class Problem1Driver {
+
+	public static void main(String[] args) {
+
+	}
+	
+	
+	
+	public static <T> T peek(Queue<T> q){
+		if(q.size() == 0){
+			return null;
+		}
+		
+		T result = q.dequeue();
+		q.enqueue(result);
+		
+		int size = q.size() - 1;
+	}
+
+}
