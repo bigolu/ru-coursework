@@ -31,6 +31,31 @@ __global__ void incoreKernel(edge *edges, int *len, int *distance, int *hasUpdat
     }
 }
 
+__global__ void outcoreKernel(edge *edges, int *len, int *distPrev, int *distCur, int *hasUpdated){
+    if(threadIdx.x == 0 && blockIdx.x == 0){
+        *hasUpdated = 0;
+    }
+    __syncthreads();
+
+    int load = (*len % gridDim.x == 0) ? *len / gridDim.x : *len / gridDim.x + 1;
+    int beg = load * blockIdx.x;
+    int end = (int)fminf((float)*len, (float)beg + (float)load);
+    beg = beg + threadIdx.x;
+    for(int i = beg; i < end; i += blockDim.x){
+        int src = edges[i].src;
+        int dest = edges[i].dest;
+        int weight = edges[i].weight;
+        if(distPrev[src] == INT_MAX) continue;
+        if(distPrev[src] + weight < distPrev[dest]){
+            atomicMin(&distCur[dest], distPrev[src] + weight);
+            *hasUpdated = 1;
+        }
+        else if(distPrev[src] + weight == distPrev[dest]){
+            atomicMin(&distCur[dest], distPrev[src] + weight);
+        }
+    }
+}
+
 void outcoreHost(std::vector<edge> edges, int blockSize, int blockNum){
     int numVertices = getNumVertices(edges);
     int numEdges = edges.size();

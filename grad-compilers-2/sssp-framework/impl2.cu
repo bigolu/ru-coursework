@@ -53,7 +53,7 @@ void writeAnswer(int *output, int len){
 int INF = INT_MAX;
 int ZERO = 0;
 
-__global__ void outcoreKernel(edge *edges, int *len, int *distPrev, int *distCur, int *hasUpdated){
+__global__ void outcoreKernel2(edge *edges, int *len, int *distPrev, int *distCur, int *hasUpdated, int *process){
     if(threadIdx.x == 0 && blockIdx.x == 0){
         *hasUpdated = 0;
     }
@@ -64,6 +64,10 @@ __global__ void outcoreKernel(edge *edges, int *len, int *distPrev, int *distCur
     int end = (int)fminf((float)*len, (float)beg + (float)load);
     beg = beg + threadIdx.x;
     for(int i = beg; i < end; i += blockDim.x){
+        if(process[i] == 0){
+            continue;
+        }
+
         int src = edges[i].src;
         int dest = edges[i].dest;
         int weight = edges[i].weight;
@@ -78,19 +82,15 @@ __global__ void outcoreKernel(edge *edges, int *len, int *distPrev, int *distCur
     }
 }
 
-__global__ void filterEdges(edge *edges, int *len, edge *edges2, int *distPrev, int *distCur){
-    int newLen = 0;
-    for(int i = 0; i < *len; i++){
+__global__ void filterEdges(edge *edges, int *len, int *process, int *distPrev, int *distCur){
+    int load = (*len % gridDim.x == 0) ? *len / gridDim.x : *len / gridDim.x + 1;
+    int beg = load * blockIdx.x;
+    int end = (int)fminf((float)*len, (float)beg + (float)load);
+    beg = beg + threadIdx.x;
+    for(int i = beg; i < end; i += blockDim.x){
         int srcIndex = edges[i].src;
-        if((distPrev[srcIndex] != distCur[srcIndex]) 
-                || (distPrev[srcIndex] == INT_MAX)){
-            //memcpy((void*)&edges2[newLen], (void*)&edges[i], sizeof(edge));
-            newLen++;
-        }
+        process[i] = (distPrev[0] != distCur[srcIndex]) || (distPrev[srcIndex] == INT_MAX);
     }
-    *len = newLen;
-    printf("%d\n", newLen);
-    printf("%d\n", *len);
 }
 
 void neighborHandlerHost(std::vector<edge> edges, int blockSize, int blockNum){
@@ -99,9 +99,9 @@ void neighborHandlerHost(std::vector<edge> edges, int blockSize, int blockNum){
     int distanceVectorSize = sizeof(int) * numVertices;
 
     // init kernel Args
-    edge *edgesDev; int *len; int *distCur; int *distPrev; int *hasUpdated; edge *edgesDev2;
+    edge *edgesDev; int *len; int *distCur; int *distPrev; int *hasUpdated; int *process;
     cudaMalloc((void**)&edgesDev, numEdges * sizeof(edge));
-    cudaMalloc((void**)&edgesDev2, numEdges * sizeof(edge));
+    cudaMalloc((void**)&process, numEdges * sizeof(int));
     cudaMalloc((void**)&len, sizeof(int));
     cudaMalloc((void**)&distCur, distanceVectorSize);
     cudaMalloc((void**)&distPrev, distanceVectorSize);
@@ -123,16 +123,18 @@ void neighborHandlerHost(std::vector<edge> edges, int blockSize, int blockNum){
         cudaMemcpy((void*)&distPrev[i], &INF, sizeof(int), cudaMemcpyHostToDevice);
     }
 
+    cudaMemset((void*)process, 0, numEdges * sizeof(int));
+    int one = 1;
+    for(int i = 0; i < numEdges; i++){
+        cudaMemcpy((void*)&process[i], &one, sizeof(int), cudaMemcpyHostToDevice);
+    }
+
     // launch kernels
     while(true){
-        outcoreKernel<<<blockNum, blockSize>>>(edgesDev, len, distPrev, distCur, hasUpdated);
-        //printf("%d\n", readCudaInt(len));
-        filterEdges<<<1, 1>>>(edgesDev, len, edgesDev2, distPrev, distCur);
-        printf("%d\n", readCudaInt(len));
-        break;
+        outcoreKernel2<<<blockNum, blockSize>>>(edgesDev, len, distPrev, distCur, hasUpdated, process);
+        filterEdges<<<blockNum, blockSize>>>(edgesDev, len, process, distPrev, distCur);
         if(!readCudaInt(hasUpdated)) break;
         swap((void**)&distCur, (void**)&distPrev);
-        swap((void**)&edgesDev, (void**)&edgesDev2);
     }
 
     // copy output from device
