@@ -49,20 +49,19 @@ void writeAnswer(int *output, int len){
     fclose(fp);
 }
 
-__global__ void cudaInitIntArray(int *a, int *len, int *val){
+__global__ void cudaInitIntArray(int *a, int len, int val){
     int totalThreads = gridDim.x * blockDim.x;
+    int totalWarps = (totalThreads % 32 == 0) ?  totalThreads / 32 : totalThreads / 32 + 1;
     int threadId = blockDim.x * blockIdx.x + threadIdx.x;
-    int warpNum = (totalThreads % 32 == 0) ? 
-        totalThreads / 32 : totalThreads / 32 + 1;
     int warpId = threadId / 32;
     int laneId = threadId % 32;
-    int load = (*len % warpNum == 0) ? *len / warpNum : *len / warpNum + 1;
+    int load = (len % totalWarps == 0) ? len / totalWarps : len / totalWarps + 1;
     int beg = load * warpId;
-    int end = (int)fminf((float)*len, (float)beg + (float)load);
+    int end = (len < beg + load) ? len : beg + load;
     beg = beg + laneId;
 
     for(int i = beg; i < end; i += 32){
-        a[i] = *val;
+        a[i] = val;
     }
 }
 
@@ -71,16 +70,15 @@ __global__ void cudaInitIntArray(int *a, int *len, int *val){
 int INF = INT_MAX;
 int ZERO = 0;
 
-__global__ void fixInf(int *distPrev, int *distCur, int *len){ 
+__global__ void setToMin(int *distPrev, int *distCur, int distLen){ 
     int totalThreads = gridDim.x * blockDim.x;
+    int totalWarps = (totalThreads % 32 == 0) ?  totalThreads / 32 : totalThreads / 32 + 1;
     int threadId = blockDim.x * blockIdx.x + threadIdx.x;
-    int warpNum = (totalThreads % 32 == 0) ? 
-        totalThreads / 32 : totalThreads / 32 + 1;
     int warpId = threadId / 32;
     int laneId = threadId % 32;
-    int load = (*len % warpNum == 0) ? *len / warpNum : *len / warpNum + 1;
+    int load = (distLen % totalWarps == 0) ? distLen / totalWarps : distLen / totalWarps + 1;
     int beg = load * warpId;
-    int end = (int)fminf((float)*len, (float)beg + (float)load);
+    int end = (distLen < beg + load) ? distLen : beg + load;
     beg = beg + laneId;
 
     for(int i = beg; i < end; i += 32){
@@ -89,37 +87,32 @@ __global__ void fixInf(int *distPrev, int *distCur, int *len){
     }
 }
 
-__global__ void step3(edge *edges, int *len, edge *T, int *distPrev, int *distCur, int *x, int *updated){
+__global__ void filterEdges(edge *edges, int edgesLen, edge *toProcessEdges, int *x, int *updated){
     int totalThreads = gridDim.x * blockDim.x;
+    int totalWarps = (totalThreads % 32 == 0) ?  totalThreads / 32 : totalThreads / 32 + 1;
     int threadId = blockDim.x * blockIdx.x + threadIdx.x;
-    int warpNum = (totalThreads % 32 == 0) ? 
-        totalThreads / 32 : totalThreads / 32 + 1;
     int warpId = threadId / 32;
     int laneId = threadId % 32;
-    int load = (*len % warpNum == 0) ? *len / warpNum : *len / warpNum + 1;
+    int load = (edgesLen % totalWarps == 0) ? edgesLen / totalWarps : edgesLen / totalWarps + 1;
     int beg = load * warpId;
-    int end = (int)fminf((float)*len, (float)beg + (float)load);
-    int curOffset = x[warpId];
+    int end = (edgesLen < beg + load) ? edgesLen : beg + load;
     beg = beg + laneId;
+    int curOffset = x[warpId];
 
     for(int i = beg; i < end; i += 32){
         int src = edges[i].src;
-        bool hasChanged = distPrev[src] != distCur[src];
         int mask = __ballot(updated[src]);
         int localId = __popc(mask<<(32-laneId));
         if(updated[src]){
-            memcpy(&T[localId + curOffset], &edges[i], sizeof(edge));
-            //printf("tsrc: %d, tdest: %d, tweight: %d\n", T[localId + curOffset].src, T[localId + curOffset].dest, T[localId + curOffset].weight);
+            memcpy(&toProcessEdges[localId + curOffset], &edges[i], sizeof(edge));
         }
-
-        __syncthreads();
         curOffset += __popc(mask);
     }
 }
 
-__global__ void getExcPrefixSum(int *x, int *toProcessLen, int *totalWarps){
+__global__ void getExcPrefixSum(int *x, int *toProcessLen, int totalWarps){
     int prevSum = 0;
-    for(int i = 0; i < *totalWarps; i++){
+    for(int i = 0; i < totalWarps; i++){
         int tmp = x[i];
         x[i] = prevSum;
         prevSum += tmp;
@@ -129,15 +122,15 @@ __global__ void getExcPrefixSum(int *x, int *toProcessLen, int *totalWarps){
     *toProcessLen = prevSum;
 }
 
-__global__ void getNumToProcess(edge *edges, int *edgesLen, int *x, int *updated){
+__global__ void getNumToProcess(edge *edges, int edgesLen, int *x, int *updated){
     int totalThreads = gridDim.x * blockDim.x;
     int totalWarps = (totalThreads % 32 == 0) ?  totalThreads / 32 : totalThreads / 32 + 1;
     int threadId = blockDim.x * blockIdx.x + threadIdx.x;
     int warpId = threadId / 32;
     int laneId = threadId % 32;
-    int load = (*edgesLen % totalWarps == 0) ? *edgesLen / totalWarps : *edgesLen / totalWarps + 1;
+    int load = (edgesLen % totalWarps == 0) ? edgesLen / totalWarps : edgesLen / totalWarps + 1;
     int beg = load * warpId;
-    int end = (*edgesLen < beg + load) ? *edgesLen : beg + load;
+    int end = (edgesLen < beg + load) ? edgesLen : beg + load;
     beg = beg + laneId;
 
     for(int i = beg; i < end; i += 32){
@@ -181,74 +174,66 @@ __global__ void processEdges(edge *edges, int *edgesLen, int *distPrev, int *dis
 
 void outcoreHost2(std::vector<edge> edges, int blockSize, int blockNum){
     int numVertices = getNumVertices(edges);
-    int numVertices2 = numVertices - 1;
     int numEdges = edges.size();
-    int distanceVectorSize = sizeof(int) * numVertices;
     int totalThreads = blockSize * blockNum;
-    int warpNum = (totalThreads % 32 == 0) ?
-        totalThreads / 32 : totalThreads / 32 + 1;
+    int warpNum = (totalThreads % 32 == 0) ? totalThreads / 32 : totalThreads / 32 + 1;
+    int distanceVectorSize = sizeof(int) * numVertices;
 
-    // init kernel Args
-    edge *edgesDev; int *len; int *distCur; int *distPrev; int *hasUpdated; int *x; int *warpNumDev; edge *T; int *newLen; int *numV; int *tmpLen; int *zeroDev; int *infDev; int *updated;
-    cudaMalloc((void**)&edgesDev, numEdges * sizeof(edge));
-    cudaMalloc((void**)&T, numEdges * sizeof(edge));
-    cudaMalloc((void**)&len, sizeof(int));
-    cudaMalloc((void**)&newLen, sizeof(int));
-    cudaMalloc((void**)&tmpLen, sizeof(int));
-    cudaMalloc((void**)&numV, sizeof(int));
-    cudaMalloc((void**)&warpNumDev, sizeof(int));
-    cudaMalloc((void**)&infDev, sizeof(int));
-    cudaMalloc((void**)&zeroDev, sizeof(int));
+    edge *edges_d;
+    cudaMalloc((void**)&edges_d, numEdges * sizeof(edge));
+    cudaMemcpy(edges_d, edges.data(), edges.size()*sizeof(edge), cudaMemcpyHostToDevice);
+
+    int *distCur;
     cudaMalloc((void**)&distCur, distanceVectorSize);
-    cudaMalloc((void**)&distPrev, distanceVectorSize);
-    cudaMalloc((void**)&hasUpdated, sizeof(int));
-    cudaMalloc((void**)&x, sizeof(int) * warpNum);
-    cudaMalloc((void**)&updated, sizeof(int) * numVertices);
-
-    cudaMemcpy(edgesDev, edges.data(), edges.size()*sizeof(edge), cudaMemcpyHostToDevice);
-    cudaMemcpy(T, edges.data(), edges.size()*sizeof(edge), cudaMemcpyHostToDevice);
-    cudaMemcpy(len, &numEdges, sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(newLen, &numEdges, sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(numV, &numVertices, sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy(warpNumDev, &warpNum, sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy((void*)hasUpdated, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy((void*)infDev, &INF, sizeof(int), cudaMemcpyHostToDevice);
-    cudaMemcpy((void*)zeroDev, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
-
-    cudaMemcpy((void*)tmpLen, &numVertices2, sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy((void*)distCur, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
-    cudaInitIntArray<<<blockNum, blockSize>>>(&distCur[1], tmpLen, infDev);
+    cudaInitIntArray<<<blockNum, blockSize>>>(&distCur[1], numVertices - 1, INF);
 
+    int *distPrev;
+    cudaMalloc((void**)&distPrev, distanceVectorSize);
     cudaMemcpy((void*)distPrev, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
-    cudaInitIntArray<<<blockNum, blockSize>>>(&distPrev[1], tmpLen, infDev);
-    
-    cudaMemcpy((void*)tmpLen, &warpNum, sizeof(int), cudaMemcpyHostToDevice);
-    cudaInitIntArray<<<blockNum, blockSize>>>(x, tmpLen, zeroDev);
+    cudaInitIntArray<<<blockNum, blockSize>>>(&distPrev[1], numVertices - 1, INF);
 
-    cudaInitIntArray<<<blockNum, blockSize>>>(updated, numV, zeroDev);
-    
-    // launch kernels
+    int *hasUpdated;
+    cudaMalloc((void**)&hasUpdated, sizeof(int));
+    cudaMemcpy((void*)hasUpdated, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
+
+    int *x; 
+    cudaMalloc((void**)&x, sizeof(int) * warpNum);
+    cudaInitIntArray<<<blockNum, blockSize>>>(x, warpNum, ZERO);
+
+    edge *toProcessEdges;
+    cudaMalloc((void**)&toProcessEdges, numEdges * sizeof(edge));
+    cudaMemcpy(toProcessEdges, edges.data(), edges.size()*sizeof(edge), cudaMemcpyHostToDevice);
+
+    int *toProcessEdgesLen;
+    cudaMalloc((void**)&toProcessEdgesLen, sizeof(int));
+    cudaMemcpy(toProcessEdgesLen, &numEdges, sizeof(int), cudaMemcpyHostToDevice);
+
+    int *updated;
+    cudaMalloc((void**)&updated, sizeof(int) * numVertices);
+    cudaInitIntArray<<<blockNum, blockSize>>>(updated, numVertices, ZERO);
+
+    // start BMF
     while(true){
-        processEdges<<<blockNum, blockSize>>>(T, newLen, distPrev, distCur, hasUpdated, updated);
-        getNumToProcess<<<blockNum, blockSize>>>(edgesDev, len, x, updated);
-        getExcPrefixSum<<<1, 1>>>(x, newLen, warpNumDev);
-        step3<<<blockNum, blockSize>>>(edgesDev, len, T, distPrev, distCur, x, updated);
+        processEdges<<<blockNum, blockSize>>>(toProcessEdges, toProcessEdgesLen, distPrev, distCur, hasUpdated, updated);
+        getNumToProcess<<<blockNum, blockSize>>>(edges_d, numEdges, x, updated);
+        getExcPrefixSum<<<1, 1>>>(x, toProcessEdgesLen, warpNum);
+        filterEdges<<<blockNum, blockSize>>>(edges_d, numEdges, toProcessEdges, x, updated);
         if(!readCudaInt(hasUpdated))
             break;
         swap((void**)&distCur, (void**)&distPrev);
-        cudaMemcpy((void*)tmpLen, &warpNum, sizeof(int), cudaMemcpyHostToDevice);
-        cudaInitIntArray<<<blockNum, blockSize>>>(x, tmpLen, zeroDev);
-        cudaInitIntArray<<<blockNum, blockSize>>>(updated, numV, zeroDev);
+        cudaInitIntArray<<<blockNum, blockSize>>>(x, warpNum, ZERO);
+        cudaInitIntArray<<<blockNum, blockSize>>>(updated, numVertices, ZERO);
         cudaMemcpy((void*)hasUpdated, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
-        fixInf<<<blockNum, blockSize>>>(distPrev, distCur, numV);
+        setToMin<<<blockNum, blockSize>>>(distPrev, distCur, numVertices);
     }
-    fixInf<<<blockNum, blockSize>>>(distPrev, distCur, numV);
+    setToMin<<<blockNum, blockSize>>>(distPrev, distCur, numVertices);
 
-    // copy output from device
+    // write answer to file
     int *output = (int*) malloc(distanceVectorSize);
     cudaMemcpy((void*)output, distCur, distanceVectorSize, cudaMemcpyDeviceToHost);
-
     writeAnswer(output, numVertices);
+    free(output);
 }
 
 void neighborHandler(std::vector<edge> * edgesPtr, int blockSize, int blockNum, int outcore){
