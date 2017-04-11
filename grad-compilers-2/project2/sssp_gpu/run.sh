@@ -2,7 +2,7 @@ BSIZE=256
 BCOUNT=8
 INPUT="../test_graphs/roadNet-CA.txt"
 OUTPUT="output.txt"
-METHOD="tpe"
+METHOD="bmf"
 USEMEM="no"
 SYNC="outcore"
 
