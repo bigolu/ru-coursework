@@ -117,65 +117,64 @@ __global__ void step3(edge *edges, int *len, edge *T, int *distPrev, int *distCu
     }
 }
 
-__global__ void step2(int *x, int *len, int *warpNum){
+__global__ void getExcPrefixSum(int *x, int *toProcessLen, int *totalWarps){
     int prevSum = 0;
-    for(int i = 0; i < *warpNum; i++){
+    for(int i = 0; i < *totalWarps; i++){
         int tmp = x[i];
         x[i] = prevSum;
         prevSum += tmp;
-
-        if(i == (*warpNum - 1)){
-            *len = prevSum;
-            printf("NEWL: %d", *len);
-        }
     }
+
+    // update length of toProcess edges
+    *toProcessLen = prevSum;
 }
 
-__global__ void step1(edge *edges, int *len, int *distPrev, int *distCur, int *x, int *updated){
+__global__ void getNumToProcess(edge *edges, int *edgesLen, int *x, int *updated){
     int totalThreads = gridDim.x * blockDim.x;
+    int totalWarps = (totalThreads % 32 == 0) ?  totalThreads / 32 : totalThreads / 32 + 1;
     int threadId = blockDim.x * blockIdx.x + threadIdx.x;
-    int warpNum = (totalThreads % 32 == 0) ? 
-        totalThreads / 32 : totalThreads / 32 + 1;
     int warpId = threadId / 32;
     int laneId = threadId % 32;
-    int load = (*len % warpNum == 0) ? *len / warpNum : *len / warpNum + 1;
+    int load = (*edgesLen % totalWarps == 0) ? *edgesLen / totalWarps : *edgesLen / totalWarps + 1;
     int beg = load * warpId;
-    int end = (int)fminf((float)*len, (float)beg + (float)load);
+    int end = (*edgesLen < beg + load) ? *edgesLen : beg + load;
     beg = beg + laneId;
 
     for(int i = beg; i < end; i += 32){
         int src = edges[i].src;
-        bool hasChanged = distPrev[src] != distCur[src];
         int mask = __ballot(updated[src]);
 
         if(laneId == 0){
-            x[warpId] += __popc(mask) * (laneId == 0);
+            x[warpId] += __popc(mask);
         }
     }
 }
 
-__global__ void outcoreKernel2(edge *edges, int *len, int *distPrev, int *distCur, int *hasUpdated, int *updated){
-    if(threadIdx.x == 0 && blockIdx.x == 0){
-        *hasUpdated = 0;
-    }
-    __syncthreads();
+__global__ void processEdges(edge *edges, int *edgesLen, int *distPrev, int *distCur, int *hasUpdated, int *updated){
+    int totalThreads = gridDim.x * blockDim.x;
+    int totalWarps = (totalThreads % 32 == 0) ?  totalThreads / 32 : totalThreads / 32 + 1;
+    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+    int warpId = threadId / 32;
+    int laneId = threadId % 32;
+    int load = (*edgesLen % totalWarps == 0) ? *edgesLen / totalWarps : *edgesLen / totalWarps + 1;
+    int beg = load * warpId;
+    int end = (*edgesLen < beg + load) ? *edgesLen : beg + load;
+    beg = beg + laneId;
 
-    int load = (*len % gridDim.x == 0) ? *len / gridDim.x : *len / gridDim.x + 1;
-    int beg = load * blockIdx.x;
-    int end = (int)fminf((float)*len, (float)beg + (float)load);
-    beg = beg + threadIdx.x;
-    for(int i = beg; i < end; i += blockDim.x){
+    for(int i = beg; i < end; i += 32){
         int src = edges[i].src;
         int dest = edges[i].dest;
         int weight = edges[i].weight;
-        if(distPrev[src] == INT_MAX) continue;
-        if(distPrev[src] + weight < distPrev[dest]){
-            atomicMin(&distCur[dest], distPrev[src] + weight);
+
+        // avoid overflow when adding weight to src
+        if(distPrev[src] == INT_MAX)
+            continue;
+        
+        int dist = distPrev[src] + weight;
+        if(dist < distPrev[dest]){
+            atomicMin(&distCur[dest], dist);
             *hasUpdated = 1;
             updated[dest] = 1;
-        }
-        else if(distPrev[src] + weight == distPrev[dest]){
-            atomicMin(&distCur[dest], distPrev[src] + weight);
         }
     }
 }
@@ -230,9 +229,9 @@ void outcoreHost2(std::vector<edge> edges, int blockSize, int blockNum){
     
     // launch kernels
     while(true){
-        outcoreKernel2<<<blockNum, blockSize>>>(T, newLen, distPrev, distCur, hasUpdated, updated);
-        step1<<<blockNum, blockSize>>>(edgesDev, len, distPrev, distCur, x, updated);
-        step2<<<1, 1>>>(x, newLen, warpNumDev);
+        processEdges<<<blockNum, blockSize>>>(T, newLen, distPrev, distCur, hasUpdated, updated);
+        getNumToProcess<<<blockNum, blockSize>>>(edgesDev, len, x, updated);
+        getExcPrefixSum<<<1, 1>>>(x, newLen, warpNumDev);
         step3<<<blockNum, blockSize>>>(edgesDev, len, T, distPrev, distCur, x, updated);
         if(!readCudaInt(hasUpdated))
             break;
@@ -240,6 +239,7 @@ void outcoreHost2(std::vector<edge> edges, int blockSize, int blockNum){
         cudaMemcpy((void*)tmpLen, &warpNum, sizeof(int), cudaMemcpyHostToDevice);
         cudaInitIntArray<<<blockNum, blockSize>>>(x, tmpLen, zeroDev);
         cudaInitIntArray<<<blockNum, blockSize>>>(updated, numV, zeroDev);
+        cudaMemcpy((void*)hasUpdated, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
         fixInf<<<blockNum, blockSize>>>(distPrev, distCur, numV);
     }
     fixInf<<<blockNum, blockSize>>>(distPrev, distCur, numV);
@@ -260,6 +260,7 @@ void neighborHandler(std::vector<edge> * edgesPtr, int blockSize, int blockNum, 
     }
     std::vector<edge> edges = *edgesPtr;
     std::sort(edges.begin(), edges.end(), edgeSrcComparator);
+    // TODO: this
     outcore ? outcoreHost2(edges, blockSize, blockNum) : outcoreHost2(edges, blockSize, blockNum);
 
     cudaDeviceProp props; cudaGetDeviceProperties(&props, 0);
