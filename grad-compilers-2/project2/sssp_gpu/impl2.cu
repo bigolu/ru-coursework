@@ -48,10 +48,116 @@ void writeAnswer(int *output, int len){
     }
     fclose(fp);
 }
+
+__global__ void cudaInitIntArray(int *a, int *len, int *val){
+    int totalThreads = gridDim.x * blockDim.x;
+    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+    int warpNum = (totalThreads % 32 == 0) ? 
+        totalThreads / 32 : totalThreads / 32 + 1;
+    int warpId = threadId / 32;
+    int laneId = threadId % 32;
+    int load = (*len % warpNum == 0) ? *len / warpNum : *len / warpNum + 1;
+    int beg = load * warpId;
+    int end = (int)fminf((float)*len, (float)beg + (float)load);
+    beg = beg + laneId;
+
+    for(int i = beg; i < end; i += 32){
+        a[i] = *val;
+    }
+}
+
 /****** END UTIL METHODS ******/
 
 int INF = INT_MAX;
 int ZERO = 0;
+
+__global__ void fixInf(int *distPrev, int *distCur, int *len){ 
+    int totalThreads = gridDim.x * blockDim.x;
+    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+    int warpNum = (totalThreads % 32 == 0) ? 
+        totalThreads / 32 : totalThreads / 32 + 1;
+    int warpId = threadId / 32;
+    int laneId = threadId % 32;
+    int load = (*len % warpNum == 0) ? *len / warpNum : *len / warpNum + 1;
+    int beg = load * warpId;
+    int end = (int)fminf((float)*len, (float)beg + (float)load);
+    beg = beg + laneId;
+
+    for(int i = beg; i < end; i += 32){
+        atomicMin(&distCur[i], distPrev[i]);
+        atomicMin(&distPrev[i], distCur[i]);
+    }
+}
+
+__global__ void step3(edge *edges, int *len, edge *T, int *distPrev, int *distCur, int *x){
+    int totalThreads = gridDim.x * blockDim.x;
+    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+    int warpNum = (totalThreads % 32 == 0) ? 
+        totalThreads / 32 : totalThreads / 32 + 1;
+    int warpId = threadId / 32;
+    int laneId = threadId % 32;
+    int load = (*len % warpNum == 0) ? *len / warpNum : *len / warpNum + 1;
+    int beg = load * warpId;
+    int end = (int)fminf((float)*len, (float)beg + (float)load);
+    int curOffset = x[warpId];
+    beg = beg + laneId;
+
+    for(int i = beg; i < end; i += 32){
+        int src = edges[i].src;
+        bool hasChanged = distPrev[src] != distCur[src];
+        int mask = __ballot(hasChanged);
+        int localId = __popc(mask<<(32-laneId));
+        if(hasChanged){
+            memcpy(&T[localId + curOffset], &edges[i], sizeof(edge));
+            //printf("tsrc: %d, tdest: %d, tweight: %d\n", T[localId + curOffset].src, T[localId + curOffset].dest, T[localId + curOffset].weight);
+        }
+
+        __syncthreads();
+        curOffset += __popc(mask);
+    }
+}
+
+__global__ void step2(int *x, int *len, int *warpNum){
+    int prevSum = 0;
+    for(int i = 0; i < *warpNum; i++){
+        int tmp = x[i];
+        x[i] = prevSum;
+        prevSum += tmp;
+
+        if(i == (*warpNum - 1)){
+            *len = prevSum;
+            printf("NEWL: %d", *len);
+        }
+    }
+}
+
+__global__ void step1(edge *edges, int *len, int *distPrev, int *distCur, int *x){
+    int totalThreads = gridDim.x * blockDim.x;
+    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+    int warpNum = (totalThreads % 32 == 0) ? 
+        totalThreads / 32 : totalThreads / 32 + 1;
+    int warpId = threadId / 32;
+    int laneId = threadId % 32;
+    int load = (*len % warpNum == 0) ? *len / warpNum : *len / warpNum + 1;
+    int beg = load * warpId;
+    int end = (int)fminf((float)*len, (float)beg + (float)load);
+    beg = beg + laneId;
+
+    for(int i = beg; i < end; i += 32){
+        int src = edges[i].src;
+        bool hasChanged = distPrev[src] != distCur[src];
+        int mask = __ballot(hasChanged);
+        /*if(hasChanged){
+            printf("src: %d, dest: %d, weight: %d\n", edges[i].src, edges[i].dest, edges[i].weight);
+        }*/
+
+       __syncthreads();
+        if(laneId == 0){
+            x[warpId] += __popc(mask) * (laneId == 0);
+        }
+        __syncthreads();
+    }
+}
 
 __global__ void outcoreKernel2(edge *edges, int *len, int *distPrev, int *distCur, int *hasUpdated){
     if(threadIdx.x == 0 && blockIdx.x == 0){
@@ -78,61 +184,84 @@ __global__ void outcoreKernel2(edge *edges, int *len, int *distPrev, int *distCu
     }
 }
 
-void neighborHandlerHost(std::vector<edge> edges, int blockSize, int blockNum){
+void outcoreHost2(std::vector<edge> edges, int blockSize, int blockNum){
     int numVertices = getNumVertices(edges);
+    int numVertices2 = numVertices - 1;
     int numEdges = edges.size();
     int distanceVectorSize = sizeof(int) * numVertices;
+    int totalThreads = blockSize * blockNum;
+    int warpNum = (totalThreads % 32 == 0) ?
+        totalThreads / 32 : totalThreads / 32 + 1;
+    printf("NUMEDGES: %d, NUMV: %d", numEdges, numVertices);
 
     // init kernel Args
-    edge *edgesDev; int *len; int *distCur; int *distPrev; int *hasUpdated; int *process;
+    edge *edgesDev; int *len; int *distCur; int *distPrev; int *hasUpdated; int *x; int *warpNumDev; edge *T; int *newLen; int *numV; int *tmpLen; int *zeroDev; int *infDev;
     cudaMalloc((void**)&edgesDev, numEdges * sizeof(edge));
-    cudaMalloc((void**)&process, numEdges * sizeof(int));
+    cudaMalloc((void**)&T, numEdges * sizeof(edge));
     cudaMalloc((void**)&len, sizeof(int));
+    cudaMalloc((void**)&newLen, sizeof(int));
+    cudaMalloc((void**)&tmpLen, sizeof(int));
+    cudaMalloc((void**)&numV, sizeof(int));
+    cudaMalloc((void**)&warpNumDev, sizeof(int));
+    cudaMalloc((void**)&infDev, sizeof(int));
+    cudaMalloc((void**)&zeroDev, sizeof(int));
     cudaMalloc((void**)&distCur, distanceVectorSize);
     cudaMalloc((void**)&distPrev, distanceVectorSize);
     cudaMalloc((void**)&hasUpdated, sizeof(int));
+    cudaMalloc((void**)&x, sizeof(int) * warpNum);
 
     cudaMemcpy(edgesDev, edges.data(), edges.size()*sizeof(edge), cudaMemcpyHostToDevice);
+    cudaMemcpy(T, edges.data(), edges.size()*sizeof(edge), cudaMemcpyHostToDevice);
     cudaMemcpy(len, &numEdges, sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(newLen, &numEdges, sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(numV, &numVertices, sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy(warpNumDev, &warpNum, sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy((void*)hasUpdated, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy((void*)infDev, &INF, sizeof(int), cudaMemcpyHostToDevice);
+    cudaMemcpy((void*)zeroDev, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
 
-    cudaMemset((void*)distCur, 0, distanceVectorSize);
+    cudaMemcpy((void*)tmpLen, &numVertices2, sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy((void*)distCur, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
-    for(int i = 1; i < numVertices; i++){
-        cudaMemcpy((void*)&distCur[i], &INF, sizeof(int), cudaMemcpyHostToDevice);
-    }
+    cudaInitIntArray<<<blockNum, blockSize>>>(&distCur[1], tmpLen, infDev);
 
-    cudaMemset((void*)distPrev, 0, distanceVectorSize);
     cudaMemcpy((void*)distPrev, &ZERO, sizeof(int), cudaMemcpyHostToDevice);
-    for(int i = 1; i < numVertices; i++){
-        cudaMemcpy((void*)&distPrev[i], &INF, sizeof(int), cudaMemcpyHostToDevice);
-    }
-
+    cudaInitIntArray<<<blockNum, blockSize>>>(&distPrev[1], tmpLen, infDev);
+    
+    cudaMemcpy((void*)tmpLen, &warpNum, sizeof(int), cudaMemcpyHostToDevice);
+    cudaInitIntArray<<<blockNum, blockSize>>>(x, tmpLen, zeroDev);
+    
     // launch kernels
     while(true){
-        outcoreKernel2<<<blockNum, blockSize>>>(edgesDev, len, distPrev, distCur, hasUpdated);
-        if(!readCudaInt(hasUpdated)) break;
+        outcoreKernel2<<<blockNum, blockSize>>>(T, newLen, distPrev, distCur, hasUpdated);
+        step1<<<blockNum, blockSize>>>(edgesDev, len, distPrev, distCur, x);
+        step2<<<1, 1>>>(x, newLen, warpNumDev);
+        step3<<<blockNum, blockSize>>>(edgesDev, len, T, distPrev, distCur, x);
+        if(!readCudaInt(hasUpdated))
+            break;
         swap((void**)&distCur, (void**)&distPrev);
+        cudaMemcpy((void*)tmpLen, &warpNum, sizeof(int), cudaMemcpyHostToDevice);
+        cudaInitIntArray<<<blockNum, blockSize>>>(x, tmpLen, zeroDev);
+        fixInf<<<blockNum, blockSize>>>(distPrev, distCur, numV);
     }
+    fixInf<<<blockNum, blockSize>>>(distPrev, distCur, numV);
 
     // copy output from device
     int *output = (int*) malloc(distanceVectorSize);
     cudaMemcpy((void*)output, distCur, distanceVectorSize, cudaMemcpyDeviceToHost);
 
     writeAnswer(output, numVertices);
-
 }
 
-void neighborHandler(std::vector<edge> * edgesPtr, int blockSize, int blockNum){
+void neighborHandler(std::vector<edge> * edgesPtr, int blockSize, int blockNum, int outcore){
     setTime();
 
-    if(!((blockSize * blockNum < 2048) && (blockNum < 64))){
+    if(!((blockSize * blockNum <= 2048) && (blockNum < 64))){
         puts("ERROR: blockNum must be <= 64 and total threads must be <= 2048\n");
         return;
     }
     std::vector<edge> edges = *edgesPtr;
     std::sort(edges.begin(), edges.end(), edgeSrcComparator);
-    neighborHandlerHost(edges, blockSize, blockNum);
+    outcore ? outcoreHost2(edges, blockSize, blockNum) : outcoreHost2(edges, blockSize, blockNum);
 
     cudaDeviceProp props; cudaGetDeviceProperties(&props, 0);
     printf("The total computation kernel time on GPU %s is %f milli-seconds\n", props.name, getTime());

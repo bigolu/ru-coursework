@@ -183,7 +183,7 @@ int main( int argc, char** argv )
             verify(parsedGraph.data(), parsedGraph.size());
 		    break;
 		case ProcessingType::Neighbor:
-		    neighborHandler(&parsedGraph, bsize, bcount);
+		    neighborHandler(&parsedGraph, bsize, bcount, outcore);
             verify(parsedGraph.data(), parsedGraph.size());
 		    break;
 		default:

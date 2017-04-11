@@ -14,11 +14,18 @@ __global__ void incoreKernel(edge *edges, int *len, int *distance, int *hasUpdat
     }
     __syncthreads();
 
-    int load = (*len % gridDim.x == 0) ? *len / gridDim.x : *len / gridDim.x + 1;
-    int beg = load * blockIdx.x;
+    int totalThreads = gridDim.x * blockDim.x;
+    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+    int warpNum = (totalThreads % 32 == 0) ? 
+        totalThreads / 32 : totalThreads / 32 + 1;
+    int warpId = threadId / 32;
+    int laneId = threadId % 32;
+    int load = (*len % warpNum == 0) ? *len / warpNum : *len / warpNum + 1;
+    int beg = load * warpId;
     int end = (int)fminf((float)*len, (float)beg + (float)load);
-    beg = beg + threadIdx.x;
-    for(int i = beg; i < end; i += blockDim.x){
+    beg = beg + laneId;
+
+    for(int i = beg; i < end; i += 32){
         int src = edges[i].src;
         int dest = edges[i].dest;
         int weight = edges[i].weight;
@@ -37,15 +44,23 @@ __global__ void outcoreKernel(edge *edges, int *len, int *distPrev, int *distCur
     }
     __syncthreads();
 
-    int load = (*len % gridDim.x == 0) ? *len / gridDim.x : *len / gridDim.x + 1;
-    int beg = load * blockIdx.x;
+    int totalThreads = gridDim.x * blockDim.x;
+    int threadId = blockDim.x * blockIdx.x + threadIdx.x;
+    int warpNum = (totalThreads % 32 == 0) ? 
+        totalThreads / 32 : totalThreads / 32 + 1;
+    int warpId = threadId / 32;
+    int laneId = threadId % 32;
+    int load = (*len % warpNum == 0) ? *len / warpNum : *len / warpNum + 1;
+    int beg = load * warpId;
     int end = (int)fminf((float)*len, (float)beg + (float)load);
-    beg = beg + threadIdx.x;
-    for(int i = beg; i < end; i += blockDim.x){
+    beg = beg + laneId;
+
+    for(int i = beg; i < end; i += 32){
         int src = edges[i].src;
         int dest = edges[i].dest;
         int weight = edges[i].weight;
-        if(distPrev[src] == INT_MAX) continue;
+        if(distPrev[src] == INT_MAX)
+            continue;
         if(distPrev[src] + weight < distPrev[dest]){
             atomicMin(&distCur[dest], distPrev[src] + weight);
             *hasUpdated = 1;
@@ -88,7 +103,8 @@ void outcoreHost(std::vector<edge> edges, int blockSize, int blockNum){
     // launch device kernel
     while(true){
         outcoreKernel<<<blockNum, blockSize>>>(edgesDev, len, distPrev, distCur, hasUpdated);
-        if(!readCudaInt(hasUpdated)) break;
+        if(!readCudaInt(hasUpdated))
+            break;
         swap((void**)&distCur, (void**)&distPrev);
     }
     
