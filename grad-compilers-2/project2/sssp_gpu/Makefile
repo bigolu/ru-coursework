@@ -5,4 +5,4 @@ sssp: *.cu *.cpp *.c
 #parse_graph.cpp impl1.cu impl2.cu opt.cu 
 
 clean:
-	rm -f *.o sssp
+	rm -f *.o sssp output.txt

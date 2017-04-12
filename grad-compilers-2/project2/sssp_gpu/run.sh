@@ -1,10 +1,10 @@
 BSIZE=256
 BCOUNT=8
-INPUT="../test_graphs/roadNet-CA.txt"
+INPUT="../test_graphs/msdoor.txt"
 OUTPUT="output.txt"
 METHOD="bmf"
 USEMEM="no"
-SYNC="outcore"
+SYNC="incore"
 
 ARGS="--input $INPUT --bsize $BSIZE --bcount $BCOUNT --output $OUTPUT --method $METHOD --usemem $USEMEM --sync $SYNC"
 
